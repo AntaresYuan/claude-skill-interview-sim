@@ -2,98 +2,113 @@
 name: interview-sim
 description: >-
   Simulate a structured interview and produce a realistic transcript. Takes an Interview Protocol +
-  受访者画像 (real person or fictional persona), researches the persona online (for real people) or
-  synthesizes coherent traits from representative-cohort research (for fictional), then generates a
-  time-budgeted transcript where the interviewee talks like that person — including disfluencies,
-  knowledge boundaries, tangents, self-corrections, and partial answers. Default use case: UX
-  research synthetic interviews; also handles expert interviews, journalist prep, mock job-interview
-  "interviewee" practice. NOT for one-off Q&A — invoke when the user wants a full transcript at the
-  end. Triggers: "/interview-sim", "模拟一场访谈", "synthetic user interview", "mock interview
-  transcript", "generate an interview transcript for ...".
+  interviewee persona profile (real person or fictional persona), researches the persona online
+  (for real people) or synthesizes coherent traits from representative-cohort research (for
+  fictional), then generates a time-budgeted transcript where the interviewee talks like that
+  person — including disfluencies, knowledge boundaries, tangents, self-corrections, and partial
+  answers. Default use case: UX research synthetic interviews; also handles expert interviews,
+  journalist prep, mock job-interview "interviewee" practice. NOT for one-off Q&A — invoke when
+  the user wants a full transcript at the end. Triggers: "/interview-sim", "synthetic user
+  interview", "mock interview transcript", "simulate an interview", "generate an interview
+  transcript for ...".
 ---
 
-# interview-sim — 结构化访谈模拟器 & Transcript 生成
+# interview-sim — structured interview simulator & transcript generator
 
-你帮用户把一份 interview protocol + 一个受访者画像，转化成**一份贴近真实录音转写的访谈
-transcript**。重点不是"答得好"——是**答得像那个人**：知识边界、说话节奏、会跑题、会卡壳、
-会自我修正、会反问 interviewer。这份 transcript 会被保留作为研究素材或参考资料，所以
-**真实感 + anti-fabrication** 是两条同时拉满的红线。
+You take an interview protocol + an interviewee persona profile, and produce **a transcript that
+reads like a real recording**. The goal is not "answers well" — it's **"answers like that
+person"**: knowledge boundaries, speaking rhythm, going off topic, getting stuck, self-correcting,
+asking the interviewer back. The transcript will be kept as research material or reference, so
+**realism + anti-fabrication** are the two non-negotiable lines.
 
-主要使用场景（按优先级）：
-1. **UX research 合成访谈**（首要）—— protocol + 用户画像 → 合成 transcript
-2. **专家访谈 / 记者采访模拟** —— 围绕公开人物的研究式访谈
-3. **求职面试中的"被面者"模拟** —— 你出题，agent 扮演候选人
-4. 未来可扩展场景 —— skill 保持中性，遇到新场景在 Kickoff 阶段问清楚
+Primary use cases (by priority):
 
-## 0. Kickoff — 开工前必跑的 intake & clarify
+1. **UX research synthetic interviews** (primary) — protocol + user persona → synthetic transcript
+2. **Expert / journalist interview simulation** — researched interviews around public figures
+3. **"Interviewee" simulation for job-interview prep** — you ask, agent plays the candidate
+4. Future scenarios — the skill stays neutral; if a new scenario comes up, clarify in Kickoff
 
-**这是必经步骤，用户明确要求每场访谈开始前都先确认。** 不要看完输入就直接埋头 research。
-用 AskUserQuestion（拆 1–3 条，按需），把以下信息对齐。**已经在 invocation 里给出的就跳过、
-没给的才问。**
+## 0. Kickoff — required intake & clarify before doing anything
 
-**必需信息（缺哪问哪）：**
-1. **Interview Protocol** —— 题目列表 / 结构 / 是否半结构化。可以是 inline 文本，也可以是
-   文件路径（如 `./protocol.md`）。指向文件就 Read；inline 就直接用。
-2. **受访者画像** ——
-   - **真人**：姓名 + title/role + （可选）相关链接（LinkedIn、个人站、文章、播客、推特）
-   - **虚构**：人设描述（年龄段、职业、行业、生活背景、关键性格 / quirk）
-   - 不确定是真人还是虚构？问。
-3. **时长**（分钟）—— 决定字数预算
-4. **语言** —— 决定语速基准 + disfluency 词库
-5. **访谈场景** —— UX research / 专家访谈 / 求职面试 / 播客 / 记者采访（影响 register、
-   interviewer 措辞、interviewee 占比）
+**This step is mandatory** — the user explicitly required that every run begin with an
+alignment pass. Do not jump into research after reading the input. Use AskUserQuestion (1–3
+questions, as needed). **Skip whatever was already given in the invocation; only ask for what's
+missing.**
 
-**关键可选项（默认值见括号，不确定就问）：**
+**Required information (ask whatever is missing):**
 
-6. **Interviewer 风格** —— 半结构化（默认：protocol 主问题 + 自然 probe）/ 严格按 protocol
-   不加 probe / 强 probe（频繁追问、要例子）
-7. **真实感（disfluency）级别** —— 高（默认，贴近真实转写，3–5 个/100 字词）/ 中 / 低（干净）
-8. **额外人物素材** —— 用户想强调的 quirk、必须涉及的话题、要避开的话题
-9. **Persona dossier 是否一起输出** —— 是（默认）/ 否 / 简版
-10. **Interviewer 是谁** —— 默认中性研究员；可指定（如"有点 pushback 的资深 PM"）
+1. **Interview Protocol** — the question list / structure / whether semi-structured. Can be
+   inline text, or a file path (e.g. `./protocol.md`). For a path, Read it; for inline, use
+   directly.
+2. **Persona profile** —
+   - **Real person**: name + title/role + (optional) links (LinkedIn, personal site, articles,
+     podcasts, Twitter)
+   - **Fictional**: persona description (age range, profession, industry, life background, key
+     traits / quirks)
+   - Unclear whether real or fictional? Ask.
+3. **Duration** (minutes) — drives the word budget
+4. **Language** — drives the speaking-rate baseline + disfluency lexicon
+5. **Interview scenario** — UX research / expert interview / job interview / podcast /
+   journalist interview (affects register, interviewer phrasing, interviewee share)
 
-**如果是真人受访者**，额外确认：
+**Key options (defaults in parentheses; ask if unsure):**
 
-11. **还原严格度** —— 严格（只用 verified facts，没挖到的就模糊化）/ 合理推测（允许用同
-    cohort/role 常见情况补全，标记为 inferred）
+6. **Interviewer style** — semi-structured (default: protocol main questions + natural probes) /
+   strict protocol with no probes / heavy-probe style (frequent follow-ups, asks for examples)
+7. **Realism level (disfluency)** — high (default; close to real transcription, ~3–5
+   fillers/100 words) / medium / low (clean)
+8. **Extra persona material** — quirks to emphasize, topics that must be covered, topics to
+   avoid
+9. **Output persona dossier?** — yes (default) / no / brief version
+10. **Who is the interviewer** — default is a neutral researcher; can be specified (e.g. "a
+    senior PM who pushes back")
 
-确认完，**复述一句"接下来我要做什么"**，再开干。形如：
+**For real-person personas**, also confirm:
 
-> 收到。我会先搜 Jane Doe 公开材料（podcast / LinkedIn / 文章），建一份 persona dossier，
-> 然后按 30 min × 中文 220 字/min × 受访者占比 70% 算预算 ≈ 4600 字，按 protocol 7 个问题
-> 分配，生成半结构化 transcript，存到 `interview_jane-doe_2026-05-13.md` 并打印。
+11. **Fidelity strictness** — strict (use only verified facts; vague-out anything not surfaced)
+    / reasonable inference (allow cohort/role-typical fill-in, but mark as inferred)
 
-## 1. Research（真人）/ Synthesis（虚构）
+After confirming, **say one sentence about what you're going to do next**, then start. Don't
+silently begin research. Example:
 
-### 1.1 真人 persona —— 上网研究
+> Got it. I'll search Jane Doe's public material (podcasts / LinkedIn / articles) and build a
+> persona dossier, then budget ~3,150 interviewee words for 30 min at English 150 wpm × 0.7
+> share, allocate across the 7 protocol questions, generate a semi-structured transcript, save
+> to `interview_jane-doe_2026-05-13.md`, and print it.
 
-**并行**发若干 WebSearch + WebFetch（**一条消息里多 tool call**），目标是建一份 dossier。
-查询模板（按需替换）：
+## 1. Research (real persona) / Synthesis (fictional persona)
 
-- `"{name}" {role}` —— 基础信息
-- `"{name}" interview OR 专访` —— 过往访谈，**最好的语言风格样本**
-- `"{name}" talk OR podcast OR keynote` —— 长形式语料
-- `"{name}" {company}` —— 工作经历相关
-- `"{name}" blog OR article OR essay OR Medium OR Substack` —— 文字风格
-- 用户给的链接直接 WebFetch
+### 1.1 Real persona — web research
 
-**研究上限**：发现有效来源少于 3 个时，告诉用户"公开材料较少，将更多依赖 inferred"，
-问要不要继续。不要为了凑数瞎搜。
+Fire **several parallel** `WebSearch` + `WebFetch` calls **in one message** to build the
+dossier. Query templates (substitute as needed):
 
-### 1.2 虚构 persona —— 合成
+- `"{name}" {role}` — basics
+- `"{name}" interview` — past interviews, **the best speaking-style sample**
+- `"{name}" talk OR podcast OR keynote` — long-form material
+- `"{name}" {company}` — work history
+- `"{name}" blog OR article OR essay OR Medium OR Substack` — written-style cues
+- Any link the user gave → `WebFetch` directly
 
-不需要查这个虚构的人（他不存在），但**应该查这类人**：
+**Research ceiling**: if fewer than ~3 useful sources surface, tell the user "public material is
+thin, going to lean more on inferred content," and ask whether to continue. Don't pad the search
+just to have something to cite.
+
+### 1.2 Fictional persona — synthesis
+
+You don't need to search the fictional person (they don't exist), but **you should search this
+kind of person**:
 
 - `"junior UX designer" career struggles 2025`
 - `"first-time mom" childcare app pain points`
-- `"中国一线城市互联网产品经理 35岁 焦虑"`
 - `"freelance illustrator" income variability`
+- `"mid-career product manager" burnout`
 
-目标：让虚构 persona 的细节锚在**真实 cohort 的 representative data** 上，而不是凭空想象。
-建 dossier 时所有 bio facts 都标 `fictional persona`，但行为模式、痛点、口头禅可以引用查到的
-representative 来源。
+Goal: anchor the fictional persona's details to **representative real-cohort data**, not
+hallucinate from scratch. In the dossier, all bio facts are labeled `fictional persona`, but
+behavior patterns, pain points, and verbal tics can cite the representative sources.
 
-### 1.3 Dossier 模板
+### 1.3 Dossier template
 
 ```
 ## Persona Dossier: <Name>  (real person / fictional persona)
@@ -103,151 +118,178 @@ representative 来源。
 **Background facts (verified)**:
   - …
 **Speaking style samples** (from <source>):
-  - 句长特征 / 起手习惯 / 频繁用词
-  - 口头禅 filler: …
-  - 举例 vs 抽象的偏好
+  - sentence length / typical openers / frequent vocabulary
+  - filler / verbal-tic patterns
+  - preference for examples vs abstraction
 **Known positions** (verified, with source):
   - …
 **Knowledge boundaries**:
-  - 强项: …
-  - 避谈 / 模糊化: …
-**Inferred** (未直接验证，按 role/cohort 推断):
+  - Strong on: …
+  - Avoids / vague on: …
+**Inferred** (not directly verified; reasonable role/cohort inference):
   - …
 **Sources**:
   - [url 1]
   - [url 2]
 ```
 
-## 2. 时长 calibration —— 字数预算
+## 2. Duration calibration — word budget
 
-**口语速度基线**（成年人 conversational pace，已扣除自然停顿）：
+**Spoken-rate baselines** (adult conversational pace, with natural pauses already accounted for):
 
-| 语言 | 单位 | 速度（每分钟） |
+| Language | Unit | Rate per minute |
 |---|---|---|
-| 英语 | words | 140–160 |
-| 中文 | 字 | 200–260 |
-| 日语 | 拍/字 | 280–320 |
-| 西班牙语 | words | 160–180 |
-| 韩语 | 音节 | 220–260 |
+| English | words | 140–160 |
+| Mandarin Chinese | characters | 200–260 |
+| Japanese | mora / characters | 280–320 |
+| Spanish | words | 160–180 |
+| Korean | syllables | 220–260 |
 
-**Interviewee 字数预算公式**：
+**Interviewee budget formula**:
 
 ```
 total_interviewee_budget = duration_min × rate × interviewee_share
 ```
 
-- `interviewee_share` ≈ 0.65–0.75 —— UX research / 专家访谈，受访者主导
-- ≈ 0.55–0.65 —— 求职面试模拟，interviewer 占比更大
+- `interviewee_share` ≈ 0.65–0.75 — UX research / expert interview (interviewee-driven)
+- ≈ 0.55–0.65 — job-interview simulation (interviewer takes a larger share)
 
-剩下份额留给 interviewer 提问 + probe + 停顿。
+The remaining share goes to interviewer questions + probes + natural pauses.
 
-**Per-question 分配**：按 protocol 题目权重分。Warmup 5–10%、核心问题每题 12–20%、收尾 5%。
-**这是软约束**，整体接近即可，不必每题精确。
+**Per-question allocation**: split by protocol-question weight. Warmup gets 5–10%; core research
+questions 12–20% each; closing 5%. **This is a soft constraint** — get close overall, don't try
+to be exact per question.
 
-**关键**：预算自己记着，**不要在 transcript 里显示字数计数**。Transcript 是给人看的。
+**Important**: keep the budget in mind, but **do not display word counts inside the transcript**.
+The transcript is for a human reader.
 
-## 3. Generation —— 让 transcript 像真人
+## 3. Generation — making the transcript sound real
 
-### 3.1 Disfluency 工具箱（高真实感默认级别）
+### 3.1 Disfluency toolkit (high-realism default)
 
-**中文**（高级别 ~3–5 个/100 字）：
+**English** (high density: ~3–5 fillers per 100 words):
 
-- Filler: 嗯 / 那个 / 就是 / 然后 / 其实 / 对 / 啊 / 怎么说呢 / 你懂吧 / 反正 / 我感觉 / 唉
-- 自我打断 + 修正："我之前是觉得——或者说，最早的时候我是觉得 X，但后来 Y"
-- 反问 interviewer："你是说……这个方向吗？" "嗯？哦你的意思是……"
-- 缩短不完整："就……对，差不多就这样。"
-- 思考停顿在 transcript 中用 `…` 表示
-
-**英文**（高级别 ~3–5 个/100 词）：
-
-- Filler: um / uh / like / you know / I mean / kind of / sort of / well / so / right / I guess
+- Fillers: um / uh / like / you know / I mean / kind of / sort of / well / so / right / I guess
 - Self-correction: "I — well, actually, what I really mean is..."
 - Trailing off: "...yeah."
 - Hedge: "I'm not sure if this is what you're asking but..."
 
-**密度调节**：
+**Mandarin Chinese** (high density: ~3–5 fillers per 100 characters):
 
-- 高（默认）：3–5/100，思想转折处更密
-- 中：1–2/100，主要在过渡句
-- 低：几乎不放，回答完整连贯（接近书面）
+- Use common Mandarin conversational fillers (the rough equivalent of "um / well / you know /
+  I mean / so / right / how do I say this"). Draw from your general knowledge of spoken
+  Mandarin — do not hard-code a fixed list.
+- Self-interruption + restart: a thought begins one way, gets cut off, and is restarted with a
+  more accurate framing.
+- Reverse-question to the interviewer: clarifying questions when the interviewee isn't sure
+  what's being asked.
+- Truncated / incomplete endings: trailing off mid-sentence.
+- Thought-pause: represent in the transcript as `…`.
 
-**关键 anti-pattern**：不要**每句一个 filler**——那不真实，那是夸张。Disfluency 应该在
-**思想切换、措辞犹豫、被问到敏感/复杂问题时**集中出现，而不是均匀撒。
+**Other languages**: use the language's native conversational fillers and disfluency patterns.
+Do not impose English-style filler density on languages where it would feel off.
 
-### 3.2 真实受访者的认知模式（UX research 尤其重要）
+**Density tuning**:
 
-合成 transcript 翻车的最大原因是**受访者太流畅、太对答如流**。真实用户会：
+- High (default): 3–5 per 100 words/chars, denser at thought transitions
+- Medium: 1–2 per 100, mostly at transitions
+- Low: nearly none, complete and fluent answers (close to written register)
 
-- **挣扎着表达**——尤其抽象问题（"你怎么定义产品价值？"），他们不会立刻给方法论答案，
-  会卡住、举具体例子、绕远路
-- **答非所问**——问 A，他先讲一段 B，最后绕回 A 或者根本没绕回
-- **反问 interviewer 澄清**——"你说的'失败'是指哪种？"
-- **Hedge**——"我不太确定哈，但我感觉……"
-- **暴露 stated vs actual 矛盾**——嘴上说"我会仔细比价"，下一段"反正就买了"
-- **具体 > 抽象**——好用户喜欢讲故事、举例子、回忆场景；不太会给框架式总结
-- **承认不知道**——"这个我真没想过" / "你这一问我才意识到"
+**Critical anti-pattern**: do not put **one filler per sentence** — that's not realistic, that's
+caricature. Disfluencies should cluster at **thought switches, hesitation moments, and
+sensitive/complex questions**, not be sprinkled uniformly.
 
-**每场访谈至少 1–2 处明显的认知挣扎或反问**。不要让 persona 全场满分作答——那是 LLM 模式，
-不是人。
+### 3.2 Real interviewees' cognitive patterns (especially crucial for UX research)
 
-### 3.3 Interviewer 侧
+The biggest failure mode of synthetic transcripts is **the interviewee being too fluent, too
+perfectly on-point**. Real users will:
 
-- **Protocol 主问题**：用 protocol 原文，可轻微自然化（"OK 那我们聊聊 X"开头、加过渡）
-- **Probe**（半结构化默认）：
-  - "能详细说说吗？"
-  - "能举个具体例子吗？"
-  - "上一次发生是什么时候？"
-  - "我想确认一下——你刚才说 X，是指 Y 吗？"
-  - 回声 + 沉默："……嗯，OK。"
-- **Echo / 沉默**是好工具——有时候 interviewer 只说"嗯"，让 persona 继续
-- **绝不诱导**——"你是不是觉得 X 不好？" 是 leading question，UX research 大忌
+- **Struggle to articulate** — especially on abstract questions ("how do you define product
+  value?"); they won't reach for a clean framework right away. They get stuck, give specific
+  examples, take detours.
+- **Answer something else** — asked A, they talk about B first, then maybe circle back to A,
+  or maybe don't.
+- **Ask the interviewer to clarify** — "what kind of 'failure' do you mean?"
+- **Hedge** — "I'm not totally sure, but I feel like..."
+- **Expose stated-vs-actual contradictions** — claim "I compare carefully," next breath
+  "I just bought it."
+- **Concrete > abstract** — good users tell stories, give examples, recall scenes; they don't
+  produce framework summaries.
+- **Admit not knowing** — "I haven't really thought about that" / "you asking that just made me
+  realize..."
 
-Kickoff 阶段如果用户选了"严格按 protocol 不加 probe"，一字不改按顺序问完。
+**Every transcript should have at least 1–2 visible cognitive struggles or clarification asks.**
+Do not let the persona perform like a perfectly-tuned LLM — that's the failure mode.
 
-## 4. Anti-fabrication 红线
+### 3.3 Interviewer side
 
-**真人 persona**：
+- **Protocol main questions**: use the protocol wording; light naturalization is fine ("OK so
+  let's talk about X" as an opener, transition phrases between sections).
+- **Probes** (semi-structured default):
+  - "Can you say more about that?"
+  - "Can you give me a specific example?"
+  - "When was the last time that happened?"
+  - "Just to make sure — you said X, do you mean Y?"
+  - Echo + silence: "...mhm, OK."
+- **Echo / silence is a tool** — sometimes the interviewer just says "mhm" and lets the persona
+  keep going.
+- **Never lead** — "you must have felt X, right?" is a leading question and a UX-research red
+  line.
 
-- ❌ 不许编造 bio facts（学校、公司、产品、时间线）——只用 research 来的
-- ❌ 不许把没说过的明确立场塞给真人——尤其 controversial topic
-- ✅ 可以让 persona 在 dossier 没覆盖的话题上**模糊化、hedge、说"这个我没仔细想过"**
-- ✅ 可以基于 research 的 speaking style 推断措辞，但不要凭空发明"金句"或给他编 manifesto
+If the user chose "strict protocol, no probes" in Kickoff, ask each question verbatim, in order,
+with no probes.
 
-**虚构 persona**：
+## 4. Anti-fabrication red lines
 
-- ❌ 不许在生成中途让 persona "升级"——开场说他是初级，后面突然显得很资深
-- ❌ 不许超出用户给定的人设——人设是宝妈，不要突然让她秀编程深度
-- ✅ 可以加入合理的 cohort-typical 细节，但要 internally consistent
+**Real persona**:
 
-**两种共同**：
+- ❌ Never fabricate bio facts (schools, companies, products, timeline) — use only what research
+  surfaced
+- ❌ Never put unspoken positions in a real person's mouth — especially on controversial topics
+- ✅ It's fine to let the persona be **vague, hedge, or say "I haven't really thought about
+  that"** on topics not covered in the dossier
+- ✅ It's fine to extend the speaking style based on research, but don't invent quotable "money
+  quotes" or fabricate a manifesto
 
-- ❌ 不许编造数字（"我们去年增长了 47%"）——除非用户在画像里给了
-- ❌ 不许编造引用别人的话
-- ✅ 给数字时 persona 应该自己 hedge："大概……我记不清了，几十万吧"
+**Fictional persona**:
 
-## 5. 输出
+- ❌ Never let the persona "level up" mid-interview — if they're junior at the start, they don't
+  suddenly sound senior
+- ❌ Never exceed the persona the user gave — if the persona is a stay-at-home parent, don't
+  suddenly demonstrate deep coding expertise
+- ✅ Cohort-typical details are fine, but must be internally consistent
 
-### 5.1 文件保存
+**Both**:
 
-调用所在目录下保存为：`interview_<persona-slug>_<YYYY-MM-DD>.md`
+- ❌ Never fabricate numbers ("we grew 47% last year") — unless the user gave them
+- ❌ Never fabricate quoted statements from other people
+- ✅ When a number is required, the persona should hedge: "maybe... I don't remember exactly, a
+  few hundred thousand?"
 
-- `persona-slug`: 小写、kebab-case、去掉空格和特殊字符（"Jane Doe" → `jane-doe`，
-  虚构 "焦虑的宝妈小李" → `anxious-mom-xiaoli` 或 `baoma-xiaoli`，让中文 slug 在合理范围内）
-- 同日重跑同 persona：加 `_v2`, `_v3` 后缀
-- 用 Write 工具保存
+## 5. Output
 
-### 5.2 对话里展示
+### 5.1 File save
 
-先一句话"已存到 `xxx.md`"，再**完整打印 transcript**到对话（用户明确要求）。
+Save to the invocation directory as: `interview_<persona-slug>_<YYYY-MM-DD>.md`
 
-### 5.3 Transcript 格式
+- `persona-slug`: lowercase, kebab-case, strip spaces & special characters (e.g. "Jane Doe" →
+  `jane-doe`)
+- Same-day re-run on the same persona: append `_v2`, `_v3`, etc.
+- Save with the Write tool
+
+### 5.2 Print in chat
+
+After saving, say one line ("Saved to `xxx.md`"), then **print the full transcript in chat**
+(the user explicitly required this).
+
+### 5.3 Transcript format
 
 ```markdown
 # Interview Transcript — <Persona Name>
 
 **Date**: YYYY-MM-DD
 **Duration target**: 30 min
-**Language**: 中文
+**Language**: English
 **Interview type**: UX research
 **Realism**: High
 **Persona type**: Real person / Fictional persona
@@ -267,15 +309,14 @@ Kickoff 阶段如果用户选了"严格按 protocol 不加 probe"，一字不改
 
 ## Transcript
 
-[00:00] **I (Interviewer)**: 谢谢你今天能过来。我们今天大概聊 30 分钟，主要想了解一下你
-平时怎么……
+[00:00] **I (Interviewer)**: Thanks for taking the time today. We're going to chat for about 30
+minutes...
 
-[00:18] **P (Jane)**: 嗯，OK，好的。
+[00:18] **P (<Name>)**: Yeah, sounds good.
 
-[00:22] **I**: 那我们就从一个简单的问题开始——你能不能先简单介绍一下你自己？
+[00:22] **I**: Let's start with something easy — can you briefly introduce yourself?
 
-[00:30] **P**: 嗯……好的，那个，我叫 Jane，我现在是在 AcmeCo 做 senior UX researcher，
-就是……嗯，怎么说呢，主要是负责……
+[00:30] **P**: Um, sure, so, my name is …
 
 …
 
@@ -290,69 +331,74 @@ Kickoff 阶段如果用户选了"严格按 protocol 不加 probe"，一字不改
 
 ## Generation notes
 
-- 总字数：约 X 字（目标 Y 字，偏差 ±N%）
-- Disfluency 密度：高 / 中 / 低
-- Verified vs inferred 比例：…
-- 已知 limitations：…（如有）
+- Total words: ~X (target Y, deviation ±N%)
+- Disfluency density: high / medium / low
+- Verified vs inferred ratio: …
+- Known limitations (if any): …
 ```
 
-**时间戳怎么算**：按累计字数 / 语速反推，每段对话开始时给一个 `[mm:ss]`。粒度到 5–10 秒
-即可，不需要秒级精确。
+**Timestamps**: derive each from cumulative word count / speaking rate. Stamp the start of each
+turn with `[mm:ss]`. 5–10s granularity is enough; second-level precision is not needed.
 
-## 6. 自检清单（生成完跑一遍）
+## 6. Self-check (run before delivery)
 
-- [ ] Persona 从头到尾**是同一个人**？说话风格、用词、立场没漂？
-- [ ] 至少有 **1–2 处明显的认知挣扎**（卡壳、反问、跑题、承认不知道）？
-- [ ] Filler 词**集中在思想切换处**，不是均匀撒？
-- [ ] Interviewer 没有 **leading question**？
-- [ ] 真人 persona 的 bio facts **都有 source**？没有的已经模糊化？
-- [ ] 数字、引用没有编造？
-- [ ] 总字数偏差 < 30%？
-- [ ] 语言一致（中英文不混，除非 persona 本来就 codeswitch）？
+- [ ] Is the persona **the same person from start to finish**? Speaking style, vocabulary,
+      positions consistent?
+- [ ] Are there **at least 1–2 visible cognitive struggles** (getting stuck, asking back, going
+      off topic, admitting not knowing)?
+- [ ] Are fillers **concentrated at thought transitions**, not sprinkled uniformly?
+- [ ] No **leading questions** from the interviewer?
+- [ ] For real persona: every bio fact has a source? Anything unsourced has been vagued out?
+- [ ] No fabricated numbers, no fabricated quoted statements?
+- [ ] Total word-count deviation < 30%?
+- [ ] Language is consistent (no inadvertent code-mixing unless the persona naturally
+      codeswitches)?
 
-发现问题就改，改完再交付。
+Found something? Fix it, then deliver.
 
-## 7. Invocation 解析
+## 7. Invocation parsing
 
-三种调用形态都支持，**parse 完缺啥 Kickoff 问啥**：
+Three forms, all supported. **Parse what's there; Kickoff fills in the rest.**
 
-**A. Inline 文本**（args 里直接贴）：
+**A. Inline text** (paste into args):
 ```
 /interview-sim
 Protocol:
 1. ...
 2. ...
 Persona: Jane Doe, Senior UX Researcher @ AcmeCo, LinkedIn: ...
-Duration: 30min, Language: 中文
+Duration: 30min, Language: English
 ```
 
-**B. 文件路径**：
+**B. File paths**:
 ```
 /interview-sim ./protocol.md ./persona.md
 ```
-Read 这些文件。
+Read those files.
 
-**C. 空白调起**：
+**C. Blank**:
 ```
 /interview-sim
 ```
-全部进 Kickoff 问。
+Run the full Kickoff.
 
-判断方法：args 里如果有看起来像路径的 token（`./`, `~/`, `.md` / `.txt` 结尾），优先当
-路径处理（先 Read，读不到再回退到 inline 解读）；否则当 inline。
+Heuristic: if args contain a path-looking token (`./`, `~/`, ending in `.md` / `.txt`), treat as
+a path first (Read; fall back to inline interpretation on failure); otherwise treat as inline.
 
-## 8. Known limitations / 待扩展
+## 8. Known limitations / future extensions
 
-- 仅文本 transcript，不生成音频
-- 多人 panel 访谈未支持（仅 1 interviewer + 1 interviewee）
-- 长访谈（>60 min）字数预算靠谱，但内容连贯性建议人工再校一次
-- 实时打断 / 动态调整未支持——生成一次到底
-- 不模拟视频访谈中的非语言信息（表情、停顿长度的精细度）
+- Text-only output; no audio generation
+- Single interviewer + single interviewee (no panel)
+- Long interviews (>60 min) — the word budget holds up, but a human coherence pass is
+  recommended
+- No real-time interruption / dynamic adjustment — one-shot generation
+- Non-verbal cues (facial expressions, fine-grained pause length) are not modeled
 
-## 9. 收尾
+## 9. Wrap-up
 
-Transcript 交付后：
+After delivering the transcript:
 
-- 如果 Kickoff 阶段创建了 TaskList，**整组标 deleted**（用户偏好：不要让 completed 状态挂着
-  污染视线）
-- 简短告诉用户：**存到哪个文件 + 总字数 + 已知 limitations 一句话**——不要复读 transcript 内容
+- If you created a task list during Kickoff, **mark the whole group `deleted`** (user
+  preference: don't let completed status linger and clutter the view)
+- Give the user a brief sign-off: **which file, total word count, and one-line known
+  limitations** — do not repeat transcript content

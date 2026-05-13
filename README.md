@@ -1,122 +1,160 @@
 # claude-skill-interview-sim
 
-一个 [Claude Code](https://claude.com/claude-code) skill，把 **interview protocol + 受访者画像**（真人 / 虚构 persona）转成一份**贴近真实录音转写的访谈 transcript**。重点不是"答得好"，是 **"答得像那个人"**——知识边界、说话节奏、会跑题、会卡壳、会自我修正、会反问 interviewer。
+A [Claude Code](https://claude.com/claude-code) skill that turns an **interview protocol + an
+interviewee persona profile** (real person or fictional) into **a transcript that reads like a
+real recording**. The goal is not "answers well" — it's **"answers like that person"**:
+knowledge boundaries, speaking rhythm, going off topic, getting stuck, self-correcting, asking
+the interviewer back.
 
-主要场景：
+Primary use cases:
 
-1. **UX research 合成访谈**——HCDE / 产品研究里，protocol + 用户画像 → 合成 transcript
-2. **专家访谈 / 记者采访模拟**——围绕公开人物的研究式访谈
-3. **求职面试中的"被面者"模拟**——你出题，agent 扮演候选人
-4. 任何需要 plausible interview transcript 作为研究 / 创作素材的场景
+1. **UX research synthetic interviews** — protocol + user persona → synthetic transcript for HCDE
+   / product research
+2. **Expert / journalist interview simulation** — researched interviews around public figures
+3. **"Interviewee" simulation for job-interview prep** — you play interviewer, agent plays
+   candidate
+4. Any scenario that needs a plausible interview transcript as research or creative material
 
-## 它能做什么
+## What it does
 
-- **Kickoff intake-clarify**：每场访谈开始前用 `AskUserQuestion` 跟用户对齐 protocol / persona / 时长 / 语言 / 场景 / disfluency 级别 / interviewer 风格 / 还原严格度等——不看完输入就埋头 research
-- **真人 persona 走网络 research**：并行 `WebSearch` + `WebFetch` 抓 LinkedIn / podcast / 演讲 / 文章 / 推特，建 dossier 严格区分 **verified / inferred**
-- **虚构 persona 走 cohort representative research**：查同类人群的痛点 / 表达方式，让虚构 persona 锚在真实 cohort 上，避免凭空合成
-- **时长 calibration**：英语 ~150 wpm、中文 ~220 字/min、日语 ~300 字/min 等，按 protocol 题目权重分配字数预算
-- **高真实感 disfluency 工具箱**：中英文各一套 filler / 自我修正 / 反问 / 思考停顿模板；**集中在思想转折处**而非均匀撒
-- **真实受访者认知模式**：挣扎着表达 / 答非所问 / 反问澄清 / hedge / stated vs actual 矛盾 / 承认不知道——每场至少 1–2 处明显认知挣扎
-- **Anti-fabrication 红线**：真人不许编 bio facts、不许塞立场；虚构不许中途升级 / 超出人设；通用不许编数字 / 引用
-- **Interviewer 半结构化 probe**：protocol 主问题 + 自然 probe（"能详细说说吗 / 能举个具体例子吗 / 上一次是什么时候"），**绝不 leading question**
-- **输出双通道**：保存为 `interview_<persona-slug>_<YYYY-MM-DD>.md` + 对话内完整打印
-- **自检清单**：8 条交付前必检（身份漂移 / 认知挣扎 / filler 分布 / leading Q / bio facts 来源 / 数字编造 / 字数偏差 / 语言一致）
+- **Kickoff intake-clarify**: every run begins with an `AskUserQuestion` pass aligning protocol /
+  persona / duration / language / scenario / disfluency level / interviewer style / fidelity
+  strictness — the skill does not jump straight into research after reading the input
+- **Real-person research**: parallel `WebSearch` + `WebFetch` against LinkedIn / podcasts / talks /
+  articles / Twitter, building a dossier that strictly separates **verified vs inferred**
+- **Fictional-persona synthesis**: search representative-cohort data (pain points, verbal style
+  for the persona's demographic and role), anchor the fictional persona to real cohort signal
+  rather than hallucinating from scratch
+- **Duration calibration**: English ~150 wpm, Mandarin Chinese ~220 chars/min, Japanese ~300
+  chars/min, etc.; allocate word budget across protocol questions by weight
+- **High-realism disfluency toolkit**: native filler / self-correction / reverse-question /
+  thought-pause patterns per language, **clustered at thought transitions** rather than
+  sprinkled uniformly
+- **Real-user cognitive patterns**: articulation struggle, answering something else, asking the
+  interviewer to clarify, hedging, stated-vs-actual contradictions, admitting not knowing —
+  every transcript has at least 1–2 visible cognitive struggles
+- **Anti-fabrication red lines**: real persona — never fabricate bio facts or unspoken
+  positions; fictional persona — no mid-interview "level-up", no exceeding the given profile;
+  both — no fabricated numbers, no fabricated quoted statements
+- **Semi-structured interviewer probes**: protocol main questions + natural probes ("can you say
+  more", "can you give a specific example"); **never leading questions**
+- **Dual output**: saves `interview_<persona-slug>_<YYYY-MM-DD>.md` to the working directory and
+  also prints the full transcript in chat
+- **Self-check pass**: 8-point checklist before delivery (persona consistency / cognitive
+  struggle present / filler distribution / leading questions / source coverage / fabricated
+  numbers / word-count deviation / language consistency)
 
-## 它不做什么
+## What it does NOT do
 
-- 不生成音频（只输出文本 transcript）
-- 不模拟多人 panel 访谈（仅 1 interviewer + 1 interviewee）
-- 不做实时打断 / 动态调整（生成一次到底）
-- 不模拟非语言信息（表情、肢体、停顿长度的精细度）
-- 不替用户设计 protocol——只在给定 protocol 上模拟
-- 不做录音 / 音轨对齐（如果有真实音频，请用别的转写工具）
+- No audio generation (text transcript only)
+- No panel simulation (one interviewer + one interviewee)
+- No real-time interruption or dynamic adjustment (one-shot generation)
+- No modeling of non-verbal cues (facial expressions, fine-grained pause length)
+- Does not design the protocol for you — only simulates against a given protocol
+- Not a transcription tool — if you have real audio, use a real transcriber
 
-## 安装
+## Install
 
 ```bash
-# 用户级（任意工作目录可用）
+# User-level (works from any working directory)
 mkdir -p ~/.claude/skills/interview-sim
 curl -o ~/.claude/skills/interview-sim/SKILL.md \
   https://raw.githubusercontent.com/AntaresYuan/claude-skill-interview-sim/main/SKILL.md
 
-# 或者 git clone
+# Or git clone
 git clone https://github.com/AntaresYuan/claude-skill-interview-sim \
   ~/.claude/skills/interview-sim
 ```
 
-下次启动 Claude Code，`/interview-sim` 就出现在 skills 列表里了。
+Restart Claude Code and `/interview-sim` will show up in the skills list.
 
-## 怎么触发
+## How to trigger
 
-在 Claude Code 里说任意一句：
+In Claude Code, say any of:
 
 - `/interview-sim`
-- "模拟一场访谈"
-- "synthetic user interview"
-- "mock interview transcript"
-- "generate an interview transcript for ..."
+- "Simulate an interview"
+- "Synthetic user interview"
+- "Mock interview transcript"
+- "Generate an interview transcript for ..."
 
-支持三种调用形态：
+Three invocation forms:
 
-- **Inline 文本**：args 里直接贴 protocol + persona 描述
-- **文件路径**：`/interview-sim ./protocol.md ./persona.md`
-- **空白**：进 Kickoff 阶段全部问
+- **Inline text**: paste the protocol + persona directly into the args
+- **File paths**: `/interview-sim ./protocol.md ./persona.md`
+- **Blank**: enter the full Kickoff and answer the questions
 
-## 核心设计哲学
+## Core design philosophy
 
-1. **真实感 > "答得好"**。如果 transcript 读起来像 LLM 答题，就是失败的。要像那个人说话。
-2. **Anti-fabrication 是红线**。真人 persona 没挖到的事实就模糊化，绝不编造。虚构 persona 不许中途"升级"。
-3. **Kickoff 必跑**。每场访谈开始前先用 `AskUserQuestion` 对齐，不要看完输入就埋头 research。
-4. **Disfluency 不要均匀撒**。filler 词应该集中在思想转折、措辞犹豫、被问到敏感问题时——而不是每句一个，那是夸张不是真实。
-5. **每场至少 1–2 处认知挣扎**。卡壳、反问、跑题、承认不知道——不让 persona 全场满分作答。那是 LLM 模式，不是人。
+1. **Realism beats correctness.** If the transcript reads like an LLM answering questions, it
+   has failed. It needs to read like that person talking.
+2. **Anti-fabrication is non-negotiable.** Real persona, no surfaced source → vague-out, never
+   fabricate. Fictional persona, no level-up mid-interview.
+3. **Kickoff is mandatory.** Every run starts with `AskUserQuestion` to align — do not start
+   research before clarifying.
+4. **Do not sprinkle disfluencies uniformly.** Fillers cluster at thought transitions,
+   hesitation moments, and sensitive/complex questions — one filler per sentence is caricature,
+   not realism.
+5. **At least 1–2 cognitive struggles per transcript.** Getting stuck, asking back, going off
+   topic, admitting not knowing — these are what separate "real person" from "LLM mode".
 
-## 工作流
+## Workflow
 
 ```
-Kickoff (AskUserQuestion，必跑)
+Kickoff (AskUserQuestion, mandatory)
   ↓
 Research
-  - 真人 → 并行 WebSearch + WebFetch 建 dossier (verified/inferred)
-  - 虚构 → cohort representative 搜索 + 合成
+  - Real persona  → parallel WebSearch + WebFetch → dossier (verified/inferred)
+  - Fictional     → representative-cohort search → synthesized dossier
   ↓
-时长 calibration (语速 × 受访者占比 = 字数预算)
+Duration calibration (rate × interviewee share = word budget)
   ↓
-Per-question 字数分配 (按 protocol 题目权重)
+Per-question allocation (by protocol weight)
   ↓
-逐题生成 (disfluency / 认知模式 / 反问 / 自我修正)
+Per-question generation (disfluency / cognitive patterns / probes / corrections)
   ↓
-Coherence pass (persona 一致性 + 跨答案呼应)
+Coherence pass (persona consistency + cross-answer references)
   ↓
-8 条自检清单
+8-point self-check
   ↓
-输出 (文件 + 对话同步打印)
+Output (file + full chat print)
 ```
 
-## 语速基线（用作字数预算）
+## Speaking-rate baselines (used for word budget)
 
-| 语言 | 单位 | 速度（每分钟）|
+| Language | Unit | Rate per minute |
 |---|---|---|
 | English | words | 140–160 |
-| 中文 | 字 | 200–260 |
-| 日本語 | 拍/字 | 280–320 |
-| Español | words | 160–180 |
-| 한국어 | 음절 | 220–260 |
+| Mandarin Chinese | characters | 200–260 |
+| Japanese | mora / characters | 280–320 |
+| Spanish | words | 160–180 |
+| Korean | syllables | 220–260 |
 
-**预算公式**：
+**Budget formula**:
+
 ```
 interviewee_budget = duration_min × rate × interviewee_share
 ```
-`interviewee_share` ≈ 0.65–0.75（UX research / 专家访谈，受访者主导）/ 0.55–0.65（求职面试模拟，interviewer 占比更大）。
 
-## 与生态里其他访谈类工具的关系
+`interviewee_share` ≈ 0.65–0.75 for UX research / expert interviews (interviewee-driven), 0.55–
+0.65 for job-interview simulations (interviewer takes more time).
 
-- 这个 skill **生成** transcript（合成 / 模拟），不是**转写**真实音频
-- 不替代用户研究里的真实访谈——如果你能做真实访谈，就做真实访谈
-- 适合：pilot protocol 调试 / 教学示例 / 研究设计预跑 / persona 探索 / 创作（剧本、podcast 草稿）/ 求职面试练习
+## Relationship to other interview tools
 
-## 致谢
+- This skill **generates** transcripts (synthesizes / simulates). It is not a real-audio
+  transcription tool.
+- It is not a replacement for real user research — if you can do a real interview, do a real
+  interview.
+- Good fits: pilot-protocol debugging, teaching examples, research-design dry-runs, persona
+  exploration, creative writing (screenplay / podcast drafts), job-interview practice.
 
-设计哲学受 UX research 与 qualitative interviewing 经典方法论影响——半结构化访谈中的 probe 设计、leading question 的避免、stated vs actual 行为差距的捕捉，这些都是从 Steinar Kvale 的 _InterViews_、Robin Legard 的 in-depth interview 方法论以及 Steve Portigal 的 _Interviewing Users_ 这类经典文献里来的。Disfluency 工具箱参考了 conversation analysis 与口语语料学的常见标注实践。
+## Acknowledgments
+
+Design philosophy draws on qualitative-interviewing methodology — half-structured-probe design,
+avoidance of leading questions, capturing the stated-vs-actual behavior gap — from sources like
+Steinar Kvale's _InterViews_, Robin Legard's in-depth interview methodology, and Steve
+Portigal's _Interviewing Users_. The disfluency toolkit references common practices from
+conversation analysis and spoken-corpus annotation.
 
 ## License
 
